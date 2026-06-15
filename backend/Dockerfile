@@ -8,11 +8,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Pre-download the default human pose model so first request isn't slow.
-# When dog weights are available, mount them via volume and set MODEL_PATH env var.
-RUN python -c "from ultralytics import YOLO; YOLO('yolov8n-pose.pt')"
+# Install ultralytics first (pulls opencv-python), then swap to headless variant
+RUN pip install --no-cache-dir ultralytics && \
+    pip install --no-cache-dir --force-reinstall opencv-python-headless && \
+    pip install --no-cache-dir fastapi==0.111.0 "uvicorn[standard]==0.29.0" python-multipart==0.0.9
+# Model downloads on first request (avoids build-time weight compat issues)
 
 COPY main.py .
 
