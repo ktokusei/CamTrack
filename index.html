@@ -12,9 +12,10 @@
     #container { position: relative; width: 100%; max-width: 720px; }
     video { display: block; width: 100%; border-radius: 8px; }
     canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 8px; }
-    #controls { margin: 0.5rem 0 0.75rem; display: flex; gap: 0; border: 1px solid #444; border-radius: 6px; overflow: hidden; }
-    #controls button { flex: 1; padding: 0.4rem 1.2rem; background: #222; color: #aaa; border: none; cursor: pointer; font-size: 0.9rem; transition: background 0.15s, color 0.15s; }
-    #controls button.active { background: #00e5ff; color: #111; font-weight: bold; }
+    #controls { margin: 0.5rem 0 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+    .btn-group { display: flex; border: 1px solid #444; border-radius: 6px; overflow: hidden; }
+    .btn-group button { flex: 1; padding: 0.4rem 1.2rem; background: #222; color: #aaa; border: none; cursor: pointer; font-size: 0.9rem; transition: background 0.15s, color 0.15s; }
+    .btn-group button.active { background: #00e5ff; color: #111; font-weight: bold; }
     #legend { margin-top: 0.75rem; display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem 1.5rem; font-size: 0.8rem; padding: 0 1rem 1rem; }
     .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
   </style>
@@ -24,8 +25,14 @@
   <p id="status">Loading model…</p>
 
   <div id="controls">
-    <button id="btn-human" class="active" onclick="switchMode('human')">🧍 Human</button>
-    <button id="btn-dog"              onclick="switchMode('dog')">🐕 Dog</button>
+    <div class="btn-group">
+      <button id="btn-human" class="active" onclick="switchMode('human')">🧍 Human</button>
+      <button id="btn-dog"              onclick="switchMode('dog')">🐕 Dog</button>
+    </div>
+    <div class="btn-group">
+      <button id="btn-front"           onclick="switchCamera('user')">🤳 Front</button>
+      <button id="btn-back" class="active" onclick="switchCamera('environment')">📷 Back</button>
+    </div>
   </div>
 
   <div id="container">
@@ -95,8 +102,9 @@
     };
 
     // ── State ───────────────────────────────────────────────────────────────
-    let currentMode = "human";
-    let landmarkers = {};   // cache loaded models: { human: landmarker, dog: landmarker }
+    let currentMode   = "human";
+    let currentCamera = "environment";   // matches initial Back button active state
+    let landmarkers   = {};
     let lastVideoTime = -1;
     let vision;
 
@@ -129,6 +137,18 @@
       status.textContent = "Tracking…";
     };
 
+    window.switchCamera = async function(facing) {
+      if (facing === currentCamera) return;
+      currentCamera = facing;
+      document.getElementById("btn-front").classList.toggle("active", facing === "user");
+      document.getElementById("btn-back").classList.toggle("active",  facing === "environment");
+      // Stop existing stream before requesting the new camera
+      if (video.srcObject) video.srcObject.getTracks().forEach(t => t.stop());
+      lastVideoTime = -1;
+      status.textContent = "Switching camera…";
+      await startCamera();
+    };
+
     async function loadModel(modelPath) {
       return PoseLandmarker.createFromOptions(vision, {
         baseOptions: { modelAssetPath: modelPath, delegate: "GPU" },
@@ -151,7 +171,7 @@
     async function startCamera() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          video: { facingMode: { ideal: currentCamera }, width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: false,
         });
         video.srcObject = stream;
