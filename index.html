@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CamTrack — Shoulder & Elbow Tracker</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    h1 { margin: 1rem 0 0.25rem; font-size: 1.2rem; letter-spacing: 0.05em; }
+    p#status { font-size: 0.85rem; color: #aaa; margin-bottom: 0.75rem; min-height: 1.2em; }
+    #container { position: relative; width: 100%; max-width: 720px; }
+    video { display: block; width: 100%; border-radius: 8px; }
+    canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 8px; }
+    #legend { margin-top: 0.75rem; display: flex; gap: 1.5rem; font-size: 0.8rem; }
+    .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <h1>CamTrack</h1>
+  <p id="status">Loading model…</p>
+
+  <div id="container">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+  </div>
+
+  <div id="legend">
+    <span><span class="dot" style="background:#00e5ff"></span>Shoulder</span>
+    <span><span class="dot" style="background:#ff4081"></span>Elbow</span>
+  </div>
+
+  <script type="module">
+    import {
+      PoseLandmarker,
+      FilesetResolver,
+      DrawingUtils
+    } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+
+    const video   = document.getElementById("video");
+    const canvas  = document.getElementById("overlay");
+    const ctx     = canvas.getContext("2d");
+    const status  = document.getElementById("status");
+
+    // Landmark indices (MediaPipe Pose)
+    const LANDMARKS = {
+      LEFT_SHOULDER:  11,
+      RIGHT_SHOULDER: 12,
+      LEFT_ELBOW:     13,
+      RIGHT_ELBOW:    14,
+    };
+    const SHOULDER_COLOR = "#00e5ff";
+    const ELBOW_COLOR    = "#ff4081";
+    const DOT_RADIUS     = 10;
+    const LABEL_OFFSET   = 16;
+
+    function colorFor(idx) {
+      return (idx === LANDMARKS.LEFT_SHOULDER || idx === LANDMARKS.RIGHT_SHOULDER)
+        ? SHOULDER_COLOR : ELBOW_COLOR;
+    }
+
+    function labelFor(idx) {
+      return Object.entries(LANDMARKS).find(([, v]) => v === idx)?.[0]
+        .replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) ?? "";
+    }
+
+    let landmarker, lastVideoTime = -1;
+
+    async function init() {
+      const vision = await FilesetResolver.forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+      );
+      landmarker = await PoseLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath:
+            "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+          delegate: "GPU",
+        },
+        runningMode: "VIDEO",
+        numPoses: 1,
+      });
+      status.textContent = "Model loaded — requesting camera…";
+      await startCamera();
+    }
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+        video.srcObject = stream;
+        video.addEventListener("loadeddata", () => {
+          status.textContent = "Tracking…";
+          requestAnimationFrame(detect);
+        });
+      } catch (err) {
+        status.textContent = `Camera error: ${err.message}`;
+      }
+    }
+
+    function detect() {
+      if (video.currentTime !== lastVideoTime) {
+        lastVideoTime = video.currentTime;
+
+        // Sync canvas to video dimensions
+        if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+          canvas.width  = video.videoWidth;
+          canvas.height = video.videoHeight;
+        }
+
+        const result = landmarker.detectForVideo(video, performance.now());
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (result.landmarks.length > 0) {
+          const lm = result.landmarks[0];
+          for (const [, idx] of Object.entries(LANDMARKS)) {
+            const pt = lm[idx];
+            if (!pt || pt.visibility < 0.5) continue;
+
+            const x = pt.x * canvas.width;
+            const y = pt.y * canvas.height;
+            const color = colorFor(idx);
+
+            // Filled dot
+            ctx.beginPath();
+            ctx.arc(x, y, DOT_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+
+            // White ring
+            ctx.beginPath();
+            ctx.arc(x, y, DOT_RADIUS + 2, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(255,255,255,0.7)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Label
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 12px sans-serif";
+            ctx.fillText(labelFor(idx), x + LABEL_OFFSET, y + 4);
+          }
+        }
+      }
+
+      requestAnimationFrame(detect);
+    }
+
+    init().catch(err => {
+      status.textContent = `Init error: ${err.message}`;
+      console.error(err);
+    });
+  </script>
+</body>
+</html>
