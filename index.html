@@ -64,6 +64,17 @@
       }
     }
 
+    // Skeleton connections: [from_idx, to_idx]
+    const BONES = [
+      [11, 12], // shoulder to shoulder
+      [11, 13], [13, 15], // left arm
+      [12, 14], [14, 16], // right arm
+      [11, 23], [12, 24], // torso sides
+      [23, 24], // hip to hip
+      [23, 25], [25, 27], // left leg
+      [24, 26], [26, 28], // right leg
+    ];
+
     const DOT_RADIUS   = 10;
     const LABEL_OFFSET = 16;
 
@@ -117,6 +128,19 @@
 
         if (result.landmarks.length > 0) {
           const lm = result.landmarks[0];
+
+          // Draw bones first (under the dots)
+          ctx.lineWidth = 3;
+          for (const [a, b] of BONES) {
+            const pa = lm[a], pb = lm[b];
+            if (!pa || !pb || pa.visibility < 0.5 || pb.visibility < 0.5) continue;
+            ctx.beginPath();
+            ctx.moveTo(pa.x * canvas.width, pa.y * canvas.height);
+            ctx.lineTo(pb.x * canvas.width, pb.y * canvas.height);
+            ctx.strokeStyle = "rgba(255,255,255,0.5)";
+            ctx.stroke();
+          }
+
           for (const [idxStr, { color, label }] of Object.entries(LANDMARK_MAP)) {
             const pt = lm[+idxStr];
             if (!pt || pt.visibility < 0.5) continue;
