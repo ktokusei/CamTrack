@@ -38,8 +38,8 @@
   </div>
   <div id="backend-row">
     <div class="btn-group">
-      <button id="btn-nas"   class="active" onclick="switchBackend('nas')">☁️ NAS</button>
-      <button id="btn-local"              onclick="switchBackend('local')">💻 Mac (local)</button>
+      <button id="btn-mac" class="active" onclick="switchBackend('mac')">💻 Mac</button>
+      <button id="btn-nas"               onclick="switchBackend('nas')">☁️ NAS</button>
     </div>
   </div>
 
@@ -58,15 +58,15 @@
 
     // Backend URLs for dog mode
     const BACKENDS = {
-      nas:   new URLSearchParams(location.search).get("api") || window.CAMTRACK_API || "",
-      local: "http://localhost:8003",
+      mac: new URLSearchParams(location.search).get("api") || window.CAMTRACK_API || "",
+      nas: "https://camtrack.tokusei.com",
     };
-    let currentBackend = "nas";
+    let currentBackend = "mac";
 
     window.switchBackend = function(backend) {
       currentBackend = backend;
       document.getElementById("btn-nas").classList.toggle("active",   backend === "nas");
-      document.getElementById("btn-local").classList.toggle("active", backend === "local");
+      document.getElementById("btn-mac").classList.toggle("active",   backend === "mac");
     };
 
     const video   = document.getElementById("video");
@@ -222,7 +222,8 @@
                 const form = new FormData();
                 form.append("file", blob, "frame.jpg");
                 try {
-                  const res = await fetch(`${BACKENDS[currentBackend]}/detect`, { method: "POST", body: form });
+                  const base = BACKENDS[currentBackend];
+                  const res = await fetch(`${base}/detect`, { method: "POST", body: form });
                   if (res.ok) {
                     const data = await res.json();
                     dogKeypoints = data.keypoints || [];
