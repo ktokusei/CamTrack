@@ -266,23 +266,39 @@
       }
     }
 
+    // Last successfully drawn landmarks — reused on frames where no new inference ran
+    let lastLandmarks = null;
+
+    function drawHumanLandmarks(lm, bones, landmarkMap) {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      for (const [a, b] of bones) {
+        const pa = lm[a], pb = lm[b];
+        if (!pa || !pb || pa.visibility < 0.5 || pb.visibility < 0.5) continue;
+        ctx.beginPath();
+        ctx.moveTo(pa.x * canvas.width, pa.y * canvas.height);
+        ctx.lineTo(pb.x * canvas.width, pb.y * canvas.height);
+        ctx.stroke();
+      }
+      for (const [idxStr, { color, label }] of Object.entries(landmarkMap)) {
+        const pt = lm[+idxStr];
+        if (!pt || pt.visibility < 0.5) continue;
+        drawDot(pt.x * canvas.width, pt.y * canvas.height, color, label);
+      }
+    }
+
     function detect() {
       const { groups, bones } = MODES[currentMode];
       const landmarkMap = buildLandmarkMap(groups);
 
       syncCanvas();
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (currentMode === "dog") {
-        // Draw API-sourced keypoints (updated at 10 fps by polling)
-        const byName = {};
-        for (const kp of dogKeypoints) byName[kp.name] = kp;
-
-        // Build index-based map for bone drawing
+        // Dog: API updates dogKeypoints at 10fps; redraw every rAF from latest data
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         const byIdx = {};
         for (const kp of dogKeypoints) byIdx[kp.index] = kp;
 
-        // Bones
         ctx.lineWidth = 3;
         ctx.strokeStyle = "rgba(255,255,255,0.5)";
         for (const [a, b] of bones) {
@@ -293,8 +309,6 @@
           ctx.lineTo(pb.x * canvas.width, pb.y * canvas.height);
           ctx.stroke();
         }
-
-        // Dots
         for (const [idxStr, { color, label }] of Object.entries(landmarkMap)) {
           const kp = byIdx[+idxStr];
           if (!kp || kp.confidence < 0.5) continue;
@@ -302,35 +316,16 @@
         }
 
       } else {
-        // Human mode: MediaPipe WASM in-browser
+        // Human: only run inference on new video frames; reuse last result otherwise
         const landmarker = landmarkers[currentMode];
         if (landmarker && video.currentTime !== lastVideoTime) {
           lastVideoTime = video.currentTime;
           const result = landmarker.detectForVideo(video, performance.now());
-
-          if (result.landmarks.length > 0) {
-            const lm = result.landmarks[0];
-
-            // Bones
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = "rgba(255,255,255,0.5)";
-            for (const [a, b] of bones) {
-              const pa = lm[a], pb = lm[b];
-              if (!pa || !pb || pa.visibility < 0.5 || pb.visibility < 0.5) continue;
-              ctx.beginPath();
-              ctx.moveTo(pa.x * canvas.width, pa.y * canvas.height);
-              ctx.lineTo(pb.x * canvas.width, pb.y * canvas.height);
-              ctx.stroke();
-            }
-
-            // Dots
-            for (const [idxStr, { color, label }] of Object.entries(landmarkMap)) {
-              const pt = lm[+idxStr];
-              if (!pt || pt.visibility < 0.5) continue;
-              drawDot(pt.x * canvas.width, pt.y * canvas.height, color, label);
-            }
-          }
+          lastLandmarks = result.landmarks.length > 0 ? result.landmarks[0] : null;
         }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (lastLandmarks) drawHumanLandmarks(lastLandmarks, bones, landmarkMap);
       }
 
       requestAnimationFrame(detect);
