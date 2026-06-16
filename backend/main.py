@@ -7,6 +7,8 @@ import cv2
 import os
 import torch
 import pathlib
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 # Locate index.html: Docker puts it alongside main.py (/app/); on Mac it's one level up
 _here = pathlib.Path(__file__).resolve().parent
@@ -37,6 +39,8 @@ else:
 print(f"Loading model: {MODEL_PATH} (type={MODEL_TYPE}, device={DEVICE})")
 model = YOLO(MODEL_PATH)
 print("Model ready.")
+
+_executor = ThreadPoolExecutor(max_workers=1)
 
 # Keypoint name lists per model type.
 # Human: COCO 17-keypoint standard
@@ -80,7 +84,10 @@ async def detect(file: UploadFile = File(...)):
     if img is None:
         raise HTTPException(status_code=400, detail="Could not decode image")
 
-    results = model(img, verbose=False, device=DEVICE)
+    loop = asyncio.get_event_loop()
+    results = await loop.run_in_executor(
+        _executor, lambda: model(img, verbose=False, device=DEVICE)
+    )
     keypoints = []
 
     if results and results[0].keypoints is not None:
