@@ -13,6 +13,8 @@
     video { display: block; width: 100%; border-radius: 8px; }
     canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 8px; }
     #controls { margin: 0.5rem 0 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+    #backend-row { display: none; margin-bottom: 0.25rem; }
+    #backend-row.visible { display: flex; }
     .btn-group { display: flex; border: 1px solid #444; border-radius: 6px; overflow: hidden; }
     .btn-group button { flex: 1; padding: 0.4rem 1.2rem; background: #222; color: #aaa; border: none; cursor: pointer; font-size: 0.9rem; transition: background 0.15s, color 0.15s; }
     .btn-group button.active { background: #00e5ff; color: #111; font-weight: bold; }
@@ -34,6 +36,12 @@
       <button id="btn-back" class="active" onclick="switchCamera('environment')">📷 Back</button>
     </div>
   </div>
+  <div id="backend-row">
+    <div class="btn-group">
+      <button id="btn-nas"   class="active" onclick="switchBackend('nas')">☁️ NAS</button>
+      <button id="btn-local"              onclick="switchBackend('local')">💻 Mac (local)</button>
+    </div>
+  </div>
 
   <div id="container">
     <video id="video" autoplay playsinline muted></video>
@@ -48,11 +56,18 @@
       FilesetResolver,
     } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 
-    // Backend URL for dog mode. Same-origin by default (frontend served from FastAPI).
-    // Override with ?api=http://... when accessing from Vercel or a different host.
-    const API_BASE = new URLSearchParams(location.search).get("api")
-                  || window.CAMTRACK_API
-                  || "";
+    // Backend URLs for dog mode
+    const BACKENDS = {
+      nas:   new URLSearchParams(location.search).get("api") || window.CAMTRACK_API || "",
+      local: "http://localhost:8003",
+    };
+    let currentBackend = "nas";
+
+    window.switchBackend = function(backend) {
+      currentBackend = backend;
+      document.getElementById("btn-nas").classList.toggle("active",   backend === "nas");
+      document.getElementById("btn-local").classList.toggle("active", backend === "local");
+    };
 
     const video   = document.getElementById("video");
     const canvas  = document.getElementById("overlay");
@@ -159,6 +174,8 @@
       document.getElementById("btn-dog").classList.toggle("active",   mode === "dog");
       renderLegend(MODES[mode].groups);
 
+      document.getElementById("backend-row").classList.toggle("visible", mode === "dog");
+
       if (mode === "dog") {
         dogKeypoints = [];
         startDogApiPolling();
@@ -205,7 +222,7 @@
                 const form = new FormData();
                 form.append("file", blob, "frame.jpg");
                 try {
-                  const res = await fetch(`${API_BASE}/detect`, { method: "POST", body: form });
+                  const res = await fetch(`${BACKENDS[currentBackend]}/detect`, { method: "POST", body: form });
                   if (res.ok) {
                     const data = await res.json();
                     dogKeypoints = data.keypoints || [];

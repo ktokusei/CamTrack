@@ -5,6 +5,7 @@ from ultralytics import YOLO
 import numpy as np
 import cv2
 import os
+import torch
 
 app = FastAPI()
 
@@ -20,7 +21,14 @@ app.add_middleware(
 MODEL_PATH = os.environ.get("MODEL_PATH", "yolov8n-pose.pt")
 MODEL_TYPE = os.environ.get("MODEL_TYPE", "human")  # "human" or "dog"
 
-print(f"Loading model: {MODEL_PATH} (type={MODEL_TYPE})")
+if torch.backends.mps.is_available():
+    DEVICE = "mps"
+elif torch.cuda.is_available():
+    DEVICE = "cuda"
+else:
+    DEVICE = "cpu"
+
+print(f"Loading model: {MODEL_PATH} (type={MODEL_TYPE}, device={DEVICE})")
 model = YOLO(MODEL_PATH)
 print("Model ready.")
 
@@ -66,7 +74,7 @@ async def detect(file: UploadFile = File(...)):
     if img is None:
         raise HTTPException(status_code=400, detail="Could not decode image")
 
-    results = model(img, verbose=False)
+    results = model(img, verbose=False, device=DEVICE)
     keypoints = []
 
     if results and results[0].keypoints is not None:
