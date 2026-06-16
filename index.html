@@ -84,15 +84,23 @@
         // Ultralytics Dog-Pose 24-keypoint schema:
         // 0=FL-paw 1=FL-knee 2=FL-elbow  3=RL-paw 4=RL-knee 5=RL-elbow
         // 6=FR-paw 7=FR-knee 8=FR-elbow  9=RR-paw 10=RR-knee 11=RR-elbow
-        // 12=tail_start 13=tail_end  22=withers 23=throat
+        // 12=tail_start  22=withers
+        // Front leg anatomy: elbow(2/8)=Shoulder, knee(1/7)=Elbow, paw(0/6)=Paw
+        // Rear leg anatomy:  elbow(5/11)=Hip,      knee(4/10)=Knee, paw(3/9)=Ankle
         modelPath: "",
         groups: [
-          { label: "F-Paw",   color: "#ff9800", indices: [0, 6] },   // front paws
-          { label: "F-Knee",  color: "#ff4081", indices: [1, 7] },   // front knees
-          { label: "F-Elbow", color: "#00e5ff", indices: [2, 8] },   // front elbows
-          { label: "R-Paw",   color: "#e040fb", indices: [3, 9] },   // rear paws
-          { label: "R-Knee",  color: "#ffeb3b", indices: [4, 10] },  // rear knees
-          { label: "R-Elbow", color: "#69f0ae", indices: [5, 11] },  // rear elbows
+          { label: "FL-Shoulder", color: "#00e5ff", indices: [2] },
+          { label: "FR-Shoulder", color: "#00e5ff", indices: [8] },
+          { label: "FL-Elbow",    color: "#ff4081", indices: [1] },
+          { label: "FR-Elbow",    color: "#ff4081", indices: [7] },
+          { label: "FL-Paw",      color: "#ff9800", indices: [0] },
+          { label: "FR-Paw",      color: "#ff9800", indices: [6] },
+          { label: "RL-Hip",      color: "#69f0ae", indices: [5] },
+          { label: "RR-Hip",      color: "#69f0ae", indices: [11] },
+          { label: "RL-Knee",     color: "#ffeb3b", indices: [4] },
+          { label: "RR-Knee",     color: "#ffeb3b", indices: [10] },
+          { label: "RL-Ankle",    color: "#e040fb", indices: [3] },
+          { label: "RR-Ankle",    color: "#e040fb", indices: [9] },
         ],
         bones: [
           [0, 1],[1, 2],[2, 22],    // front left leg → withers
@@ -127,8 +135,18 @@
     }
 
     function renderLegend(groups) {
+      const seen = new Set();
       legend.innerHTML = groups
-        .map(g => `<span><span class="dot" style="background:${g.color}"></span>${g.label}</span>`)
+        .filter(g => {
+          const key = g.color;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .map(g => {
+          const base = g.label.replace(/^[FR][LR]-/, '');
+          return `<span><span class="dot" style="background:${g.color}"></span>${base}</span>`;
+        })
         .join("");
     }
 
