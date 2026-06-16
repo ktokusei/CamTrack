@@ -186,11 +186,13 @@
       if (dogApiTimer) { clearInterval(dogApiTimer); dogApiTimer = null; }
     }
 
+    const API_INFER_WIDTH = 320; // scale down before sending to reduce NAS CPU load
+
     async function sendFrameToApi() {
       if (!video.videoWidth) return;
-      apiCanvas.width  = video.videoWidth;
-      apiCanvas.height = video.videoHeight;
-      apiCtx.drawImage(video, 0, 0);
+      apiCanvas.width  = API_INFER_WIDTH;
+      apiCanvas.height = Math.round(video.videoHeight * API_INFER_WIDTH / video.videoWidth);
+      apiCtx.drawImage(video, 0, 0, apiCanvas.width, apiCanvas.height);
       apiCanvas.toBlob(async blob => {
         if (!blob) return;
         const form = new FormData();
