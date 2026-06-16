@@ -89,18 +89,18 @@
         // Rear leg anatomy:  elbow(5/11)=Hip,      knee(4/10)=Knee, paw(3/9)=Ankle
         modelPath: "",
         groups: [
-          { label: "FL-Shoulder", color: "#00e5ff", indices: [2] },
-          { label: "FR-Shoulder", color: "#00e5ff", indices: [8] },
-          { label: "FL-Elbow",    color: "#ff4081", indices: [1] },
-          { label: "FR-Elbow",    color: "#ff4081", indices: [7] },
-          { label: "FL-Paw",      color: "#ff9800", indices: [0] },
-          { label: "FR-Paw",      color: "#ff9800", indices: [6] },
-          { label: "RL-Hip",      color: "#69f0ae", indices: [5] },
-          { label: "RR-Hip",      color: "#69f0ae", indices: [11] },
-          { label: "RL-Knee",     color: "#ffeb3b", indices: [4] },
-          { label: "RR-Knee",     color: "#ffeb3b", indices: [10] },
-          { label: "RL-Ankle",    color: "#e040fb", indices: [3] },
-          { label: "RR-Ankle",    color: "#e040fb", indices: [9] },
+          { label: "Shoulder (L)", color: "#00e5ff", indices: [2] },
+          { label: "Shoulder (R)", color: "#00e5ff", indices: [8] },
+          { label: "Elbow (L)",    color: "#ff4081", indices: [1] },
+          { label: "Elbow (R)",    color: "#ff4081", indices: [7] },
+          { label: "Paw (L)",      color: "#ff9800", indices: [0] },
+          { label: "Paw (R)",      color: "#ff9800", indices: [6] },
+          { label: "Hip (L)",      color: "#69f0ae", indices: [5] },
+          { label: "Hip (R)",      color: "#69f0ae", indices: [11] },
+          { label: "Knee (L)",     color: "#ffeb3b", indices: [4] },
+          { label: "Knee (R)",     color: "#ffeb3b", indices: [10] },
+          { label: "Ankle (L)",    color: "#e040fb", indices: [3] },
+          { label: "Ankle (R)",    color: "#e040fb", indices: [9] },
         ],
         bones: [
           [0, 1],[1, 2],[2, 22],    // front left leg → withers
@@ -144,7 +144,7 @@
           return true;
         })
         .map(g => {
-          const base = g.label.replace(/^[FR][LR]-/, '');
+          const base = g.label.replace(/ \([LR]\)$/, '');
           return `<span><span class="dot" style="background:${g.color}"></span>${base}</span>`;
         })
         .join("");
