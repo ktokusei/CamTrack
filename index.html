@@ -177,34 +177,48 @@
     const apiCanvas = document.createElement("canvas");
     const apiCtx    = apiCanvas.getContext("2d");
 
+    let dogApiRunning = false;
+
     function startDogApiPolling() {
       stopDogApiPolling();
-      dogApiTimer = setInterval(sendFrameToApi, 100);
+      dogApiRunning = true;
+      dogApiLoop();
     }
 
     function stopDogApiPolling() {
-      if (dogApiTimer) { clearInterval(dogApiTimer); dogApiTimer = null; }
+      dogApiRunning = false;
     }
 
     const API_INFER_WIDTH = 320; // scale down before sending to reduce NAS CPU load
 
-    async function sendFrameToApi() {
-      if (!video.videoWidth) return;
-      apiCanvas.width  = API_INFER_WIDTH;
-      apiCanvas.height = Math.round(video.videoHeight * API_INFER_WIDTH / video.videoWidth);
-      apiCtx.drawImage(video, 0, 0, apiCanvas.width, apiCanvas.height);
-      apiCanvas.toBlob(async blob => {
-        if (!blob) return;
-        const form = new FormData();
-        form.append("file", blob, "frame.jpg");
-        try {
-          const res = await fetch(`${API_BASE}/detect`, { method: "POST", body: form });
-          if (res.ok) {
-            const data = await res.json();
-            dogKeypoints = data.keypoints || [];
-          }
-        } catch (_) { /* backend unreachable — keep last keypoints */ }
-      }, "image/jpeg", 0.7);
+    // Sequential loop: send next frame only after previous response arrives,
+    // so we never queue stale requests when inference is slow.
+    async function dogApiLoop() {
+      while (dogApiRunning) {
+        if (video.videoWidth) {
+          apiCanvas.width  = API_INFER_WIDTH;
+          apiCanvas.height = Math.round(video.videoHeight * API_INFER_WIDTH / video.videoWidth);
+          apiCtx.drawImage(video, 0, 0, apiCanvas.width, apiCanvas.height);
+          await new Promise(resolve => {
+            apiCanvas.toBlob(async blob => {
+              if (blob) {
+                const form = new FormData();
+                form.append("file", blob, "frame.jpg");
+                try {
+                  const res = await fetch(`${API_BASE}/detect`, { method: "POST", body: form });
+                  if (res.ok) {
+                    const data = await res.json();
+                    dogKeypoints = data.keypoints || [];
+                  }
+                } catch (_) { /* backend unreachable — keep last keypoints */ }
+              }
+              resolve();
+            }, "image/jpeg", 0.7);
+          });
+        } else {
+          await new Promise(r => setTimeout(r, 100));
+        }
+      }
     }
 
     window.switchCamera = async function(facing) {
