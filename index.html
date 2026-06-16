@@ -48,8 +48,10 @@
       FilesetResolver,
     } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 
-    // Backend URL for dog mode (YOLOv8 API). Override if deploying behind a tunnel.
-    const API_BASE = window.CAMTRACK_API || "http://localhost:8003";
+    // Backend URL for dog mode. Priority: ?api= param > window.CAMTRACK_API > localhost default.
+    const API_BASE = new URLSearchParams(location.search).get("api")
+                  || window.CAMTRACK_API
+                  || "http://localhost:8003";
 
     const video   = document.getElementById("video");
     const canvas  = document.getElementById("overlay");
