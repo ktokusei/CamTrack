@@ -6,6 +6,12 @@ import numpy as np
 import cv2
 import os
 import torch
+import pathlib
+
+# Locate index.html: Docker puts it alongside main.py (/app/); on Mac it's one level up
+_here = pathlib.Path(__file__).resolve().parent
+_candidates = [_here / "index.html", _here.parent / "index.html"]
+INDEX_HTML = next((str(p) for p in _candidates if p.exists()), "/app/index.html")
 
 app = FastAPI()
 
@@ -60,7 +66,7 @@ KP_NAMES = DOG_KP_NAMES if MODEL_TYPE == "dog" else HUMAN_KP_NAMES
 
 @app.get("/")
 def index():
-    return FileResponse("/app/index.html")
+    return FileResponse(INDEX_HTML)
 
 @app.get("/health")
 def health():
