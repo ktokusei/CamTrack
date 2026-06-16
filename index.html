@@ -48,10 +48,11 @@
       FilesetResolver,
     } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 
-    // Backend URL for dog mode. Priority: ?api= param > window.CAMTRACK_API > localhost default.
+    // Backend URL for dog mode. Same-origin by default (frontend served from FastAPI).
+    // Override with ?api=http://... when accessing from Vercel or a different host.
     const API_BASE = new URLSearchParams(location.search).get("api")
                   || window.CAMTRACK_API
-                  || "http://localhost:8003";
+                  || "";
 
     const video   = document.getElementById("video");
     const canvas  = document.getElementById("overlay");

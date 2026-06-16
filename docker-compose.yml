@@ -6,11 +6,8 @@ services:
     ports:
       - "8003:8003"
     environment:
-      # Switch to "dog" + point at dog weights once trained:
-      #   MODEL_PATH: /models/dog-pose-best.pt
-      #   MODEL_TYPE: dog
-      MODEL_PATH: yolov8n-pose.pt
-      MODEL_TYPE: human
+      MODEL_PATH: /models/dog-pose-best.pt
+      MODEL_TYPE: dog
     volumes:
-      # Mount a local models/ dir here to load custom weights without rebuilding:
       - ./models:/models
+      - ./index.html:/app/index.html:ro

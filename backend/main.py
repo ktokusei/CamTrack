@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from ultralytics import YOLO
 import numpy as np
 import cv2
@@ -10,7 +11,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["POST"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -48,6 +49,10 @@ DOG_KP_NAMES = [
 
 KP_NAMES = DOG_KP_NAMES if MODEL_TYPE == "dog" else HUMAN_KP_NAMES
 
+
+@app.get("/")
+def index():
+    return FileResponse("/app/index.html")
 
 @app.get("/health")
 def health():
