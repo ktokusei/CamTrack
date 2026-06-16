@@ -197,11 +197,21 @@
     };
 
     async function loadModel(modelPath) {
-      return PoseLandmarker.createFromOptions(vision, {
-        baseOptions: { modelAssetPath: modelPath, delegate: "GPU" },
-        runningMode: "VIDEO",
-        numPoses: 1,
-      });
+      // Try GPU first; fall back to CPU (GPU delegate fails silently on some desktop browsers)
+      try {
+        const m = await PoseLandmarker.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: modelPath, delegate: "GPU" },
+          runningMode: "VIDEO",
+          numPoses: 1,
+        });
+        return m;
+      } catch (_) {
+        return PoseLandmarker.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: modelPath, delegate: "CPU" },
+          runningMode: "VIDEO",
+          numPoses: 1,
+        });
+      }
     }
 
     // ── Init ────────────────────────────────────────────────────────────────
